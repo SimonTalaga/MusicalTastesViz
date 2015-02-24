@@ -1,69 +1,3 @@
-<?php
-require_once 'vendor/echonest/Autoloader.php';
-require_once 'vendor/lastfm/api/lastfmapi.php';
-require_once 'ApplicationConfig.php';
-require_once 'Node.php';
-require_once 'Edge.php';
-require_once 'ArtistsGraph.php';
-require_once 'functions.php';
-
-
-EchoNest_Autoloader::register();
-$params = array('user' => ApplicationConfig::lastFmUser, 'limit' => '50');
-
-// Auth to LastFM API
-$authVars['apiKey'] = ApplicationConfig::lastFmKey;
-$auth = new lastfmApiAuth('setsession', $authVars);
-
-// API Instances
-$lastFm = new lastfmApi();
-$lastFmUser = $lastFm->getPackage($auth, 'user');
-$lastFmLibrary = $lastFm->getPackage($auth, 'library');
-
-$tracks = $lastFmLibrary->getArtists($params);
-$totalPages = (int)$tracks['totalPages'];
-$result = Array();
-
-for($i = 1; $i <= $totalPages; $i++) {
-    $query = array('user' => ApplicationConfig::lastFmUser, 'page' => $i, 'limit' => '50');
-    $tracks = $lastFmLibrary->getArtists($query);
-    for($j = 0; $j < count($tracks['results']); $j++) {
-        array_push($result, $tracks['results'][$j]);
-    }
-}
-
-// Auth to EchoNest API
-$echonest = new EchoNest_Client();
-$echonest->authenticate(ApplicationConfig::echoNestKey);
-$artistApi = $echonest->getArtistApi();
-$artistsGraph = dataToGraphStructure($result);
-
-// "Moulinette" qui récupère les artistes similaires selon une profondeur de $relationshipDepth (nombre d'artistes liés par artiste)
-// et met à jour le tableau avec les artistes liés entre eux dans la bibliothèque
-$i = 1;
-foreach($artistsGraph->getNodes() as $node) {
-    // On affiche l'état courant à l'écran
-    echo 'Traitement de l\'artiste ' . $i . ' / ' . count($artistsGraph->getNodes()) . '<br />';
-    ob_flush();
-    flush();
-
-    try {
-        $artistApi->setName($node->label);
-        $similars = array_column($artistApi->getSimilar(ApplicationConfig::similarDepth, 1), 'name');
-
-        foreach($similars as $similar) {
-            $similar_id = $artistsGraph->searchArtist($similar);
-            if($similar_id && !$artistsGraph->searchLink($similar_id, $node->id)) {
-                $artistsGraph->addEdge(new Edge($node->id, $similar_id));
-            }
-        }
-    } catch(Exception $e) { echo 'Artiste inconnu : '. $node->label .'<br />'; };
-    $i++;
-}
-
-$artistsGraph->saveToJSON('data/' . ApplicationConfig::lastFmUser . '.json');
-?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -119,74 +53,31 @@ $artistsGraph->saveToJSON('data/' . ApplicationConfig::lastFmUser . '.json');
     <script src="vendor/sigmajs/plugins/sigma.parsers.json/sigma.parsers.json.js"></script>
     <script src="vendor/sigmajs/plugins/sigma.layout.forceAtlas2/supervisor.js"></script>
     <script src="vendor/sigmajs/plugins/sigma.layout.forceAtlas2/worker.js"></script>
+    <script src="vendor/jquery/jquery.min.js"></script>
+
     <style>
-        #graph-container {
-            width: 1000px;
-            height: 500px;
+        #graph {
+            width: 800px;
+            height: 600px;
             background-color: #eee;
         }
     </style>
 </head>
 
 <body>
-    <div id="container">
-        <div id="graph-container"></div>
+    <form id="graphForm" action="buildGraph.php" method="POST">
+        <label for="username">Lastfm User :</label>
+        <input type="text" id="username" />
+        <button id="buildGraph">Générer le graphe</button>
+        <progress value="0" max="100">Pchitt</progress>
+    </form>
+
+    <br/>
+
+    <div id="graph-container">
+        <div id="graph"></div>
     </div>
-    <script>
-        var s = new sigma({
-            container: 'graph-container',
-            renderer: {
-              container: document.getElementById('graph-container'),
-                type: 'canvas'
-            },
-            settings: {
-                defaultLabelSize: 20,
-                defaultEdgeType: 'curve',
-                minNodeSize: 1,
-                maxNodeSize: 10,
-                drawLabels: false,
 
-                enableEdgeHovering: false,
-                edgeHoverColor: 'default',
-                defaultEdgeHoverColor: "#eee",
-                defaultHoverLabelBGColor: '#eee',
-                customLabel: true,
-
-                edgeColor: 'default',
-                defaultEdgeColor: '#aaa',
-
-
-                doubleClickEnabled: false,
-                minEdgeSize: 1,
-                maxEdgeSize: 1,
-                edgeHoverSizeRatio: 1,
-                edgeHoverExtremities: false
-            }
-        });
-
-        sigma.parsers.json('data/<?php echo ApplicationConfig::lastFmUser ?>.json', s, function() {
-            s.startForceAtlas2({
-                linLogMode: true,
-                strongGravityMode: true,
-                adjustSizes: true,
-                edgeWeightInfluence: 0
-            });
-
-            s.bind('clickNode', function() {
-                if(s.isForceAtlas2Running()) {
-                    s.stopForceAtlas2();
-                }
-
-                else {
-                    s.startForceAtlas2();
-                }
-
-            });
-
-            console.log(
-                'Artistes : ' + s.graph.nodes().length + '\nConnexions : ' + s.graph.edges().length
-            );
-        });
-    </script>
+    <script src="index.js"></script>
 </body>
 </html>
