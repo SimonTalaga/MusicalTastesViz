@@ -49,6 +49,7 @@ if(!file_exists('data/' . ApplicationConfig::$lastFmUser . '.json'))
         $echonest->authenticate(ApplicationConfig::echoNestKey);
         $artistApi = $echonest->getArtistApi();
         $artistsGraph = dataToGraphStructure($result);
+        var_dump($result);
 
         // "Moulinette" qui récupère les artistes similaires selon une profondeur de similarDepth (nombre d'artistes liés par artiste)
         // et met à jour le tableau avec les artistes liés entre eux dans la bibliothèque

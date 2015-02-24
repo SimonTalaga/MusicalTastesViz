@@ -43,29 +43,6 @@
       context.shadowColor = settings('labelHoverShadowColor');
     }
 
-    /*
-     var w = 150;
-     var h = 90;
-
-     var ox = 20;
-     var oy = 20;
-
-     var p = 12;
-
-     context.beginPath();
-     context.moveTo(ox, oy);
-     context.lineTo(ox, h);
-     context.lineTo(ox + (w / 2) - (p / 1.2), h);
-     context.lineTo(ox + (w / 2), h + p);
-     context.lineTo(ox + (w / 2) + (p / 1.2), h);
-     context.lineTo(ox + w, h);
-     context.lineTo(ox + w, oy);
-
-     context.stroke();
-     context.closePath();
-     context.fill();
-     */
-
      if (node.label && typeof node.label === 'string') {
 
         x = Math.round(node[prefix + 'x'] - fontSize / 2 - 2);
@@ -78,10 +55,10 @@
 
         if(settings('customLabel')) {
             h = 90;
-            // On prend en compte la taille de l'image
-            w = w + h;
-            var ox = x - w / 2 + fontSize / 2;
             var p = 12;
+            // On prend en compte la taille de l'image
+            w = w + h + p;
+            var ox = x - w / 2 + fontSize / 2;
             var oy;
 
             context.moveTo(ox, oy);
@@ -117,12 +94,16 @@
             context.shadowOffsetY = 0;
             context.shadowBlur = 0;
 
-            // Display the thumbnail
             var img = document.createElement('img');
             img.src = node.img;
-            img.onload = function () {
+            if(!img.complete) {
+                img.onload = function() {
+                    context.drawImage(img, (126 - h) / 2, 0, 126, 84, ox, oy, 126 - ((126 - h) / 2), h);
+                };
+            }
+            else {
                 context.drawImage(img, (126 - h) / 2, 0, 126, 84, ox, oy, 126 - ((126 - h) / 2), h);
-            };
+            }
 
             // Display the label:
             context.fillStyle = (settings('labelHoverColor') === 'node') ?

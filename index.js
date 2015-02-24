@@ -57,6 +57,8 @@ $(document).ready(function() {
                             edgeHoverColor: 'default',
                             defaultEdgeHoverColor: "#eee",
                             defaultHoverLabelBGColor: '#eee',
+
+                            // Custom params
                             customLabel: true,
 
                             edgeColor: 'default',
@@ -98,6 +100,4 @@ $(document).ready(function() {
             }
         );
     });
-
-
 });
