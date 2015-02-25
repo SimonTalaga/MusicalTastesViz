@@ -6,21 +6,20 @@
  * Time: 22:42
  */
 
-/*
-function saveWorkingData($data, $filename) {
+
+function saveJson($data, $filename) {
     $file = fopen($filename, 'w');
     $json = stripslashes(json_encode($data, JSON_UNESCAPED_UNICODE));
     fwrite($file, mb_convert_encoding($json, 'UTF-8', 'auto'));
     fclose($file);
 }
 
-function readWorkingData($filename) {
+function readJson($filename) {
     $file = file($filename);
     $data = json_decode($file[0], true);
-    unlink($filename);
     return $data;
 }
-*/
+
 
 function dataToGraphStructure($data) {
     $nodes = array();

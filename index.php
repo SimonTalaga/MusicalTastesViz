@@ -59,7 +59,7 @@
         #graph {
             width: 800px;
             height: 600px;
-            background-color: #eee;
+            background-color: #fff;
         }
     </style>
 </head>

@@ -77,7 +77,6 @@ class EchoNest_Api_Track extends EchoNest_Api
   {
       $response = $this->client->get('track/profile', array(
           'md5'    => $md5,
-          'wait'   => $wait,
           'bucket' => $bucket,
           ));
 

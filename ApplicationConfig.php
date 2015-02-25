@@ -7,7 +7,7 @@
  */
 
 class ApplicationConfig {
-  public static $lastFmUser = '';
+  public static $lastFmUser = 'SimonTalaga';
   const lastFmKey = '1bf440e81eab4abe8c9570678df10df1';
   const echoNestKey = 'HRDQV2ZJV5E0MNZJI';
   const similarDepth = 20;
