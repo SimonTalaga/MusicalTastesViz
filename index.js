@@ -4,6 +4,19 @@
 var s = null;
 
 $(document).ready(function() {
+    $.ajax(
+        {
+            url: 'router.php',
+            data: {action: 'getFavoritePitch'},
+            success: function(data) {
+                data = JSON.parse(data);
+                $('#pitch blockquote').text(data.desc);
+                $('#pitch span').text(data.favoritePitch);
+            }
+            //dataType: 'json'
+        }
+    );
+
     $('#graphForm').submit(function(e) {
         e.preventDefault();
         var form = $(this);

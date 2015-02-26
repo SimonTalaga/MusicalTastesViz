@@ -95,27 +95,4 @@ class MusicKeys {
         return $key . ' ' . $mode;
     }
 
-    public static function getFavePitch($tracks_analysis_data) {
-        // Calcul de la tonalité préférée
-        $pitches = array();
-
-        foreach($tracks_analysis_data as $data) {
-            if($data['analysis'] != null)
-                array_push($pitches, MusicKeys::getPitch($data['analysis']['key'], $data['analysis']['mode']));
-        }
-
-        $empty_array = array_map( function($v) { return 0; }, $pitches);
-        $pitches_count = array_combine($pitches, $empty_array);
-
-        foreach($pitches as $pitch) {
-            $pitches_count[$pitch]++;
-        }
-
-        arsort($pitches_count);
-        $favePitch = array_keys($pitches_count)[0];
-        $favePitchDesc = MusicKeys::getPitchDesc($favePitch);
-
-        echo 'Tonalité préférée : ' . $favePitch . ' : ' . $favePitchDesc;
-        var_dump($pitches_count);
-    }
 } 
