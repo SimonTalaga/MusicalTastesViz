@@ -4,12 +4,23 @@
 var s = null;
 
 $(document).ready(function() {
+
+    $('.display-data').click(function() {
+       var username = $(this).parent().find('.content span').text();
+       fetchData(username);
+    });
+
     $('#graphForm').submit(function(e) {
         e.preventDefault();
         var form = $(this);
         var username = form.find('#username').val();
-        console.log(username);
-        $.ajax(
+        $('#progressBar').show();
+        fetchData(username);
+    });
+
+    function fetchData(username) {
+        var form = $('#graphForm');
+            $.ajax(
             {
                 async: true,
                 url: form.attr("action"),
@@ -26,8 +37,9 @@ $(document).ready(function() {
                                 function(data)
                                 {
                                     data = JSON.parse(data);
-                                    form.find('span').text(data.step);
-                                    form.find('progress').attr('value', data.progress);
+                                    form.find('#progressBar .label').text(data.step + " " + data.progress + " / " + data.total);
+                                    var percent = Math.ceil(parseInt(data.progress) / parseInt(data.total) * 100);
+                                    form.find('#progressBar .bar').css('width', percent + '%');
                                 }
                             );
                         },
@@ -46,6 +58,8 @@ $(document).ready(function() {
                             progressChecker: null,
                             beforeSend: function()
                             {
+                                $('.tastes-content').hide();
+                                $('.tastes .loader').addClass('active');
                                 this.progressChecker = setInterval(
                                     function()
                                     {
@@ -54,8 +68,9 @@ $(document).ready(function() {
                                             function(data)
                                             {
                                                 data = JSON.parse(data);
-                                                form.find('span').text(data.step);
-                                                form.find('progress').attr('value', data.progress);
+                                                form.find('#progressBar .label').text(data.step + " " + data.progress + " / " + data.total);
+                                                var percent = Math.ceil(parseInt(data.progress) / parseInt(data.total) * 100);
+                                                form.find('#progressBar .bar').css('width', percent + '%');
                                             }
                                         );
                                     },
@@ -64,14 +79,16 @@ $(document).ready(function() {
                             },
                             success: function(data) {
                                 clearInterval(this.progressChecker);
+                                $('#progressBar').hide();
 
-                                $.get('router.php', {action: 'getFavoritePitch'}, function(data) {
+                                $.get('router.php', {action: 'getFavoritePitch', user: username}, function(data) {
                                     data = JSON.parse(data);
                                     $('#pitch blockquote').text(data.desc);
-                                    $('#pitch span').text(data.favoritePitch);
+                                    $('#pitch .key').text(data.key);
+                                    $('#pitch .mode').text(data.mode);
                                 });
 
-                                $.get('router.php', {action: 'getAcousticTastes'}, function(data) {
+                                $.get('router.php', {action: 'getAcousticTastes', user: username}, function(data) {
                                     data = JSON.parse(data);
                                     var ctx = document.getElementById('diamond').getContext('2d');
                                     var dataset = {
@@ -90,6 +107,7 @@ $(document).ready(function() {
 //
                                     var myRadarChart = new Chart(ctx).Radar(dataset, {
                                         scaleOverride   : true,
+                                        responsive: true,
                                         scaleFontSize: 30,
                                         pointLabelFontSize : 15,
                                         scaleSteps      : 5,
@@ -99,6 +117,9 @@ $(document).ready(function() {
 
                                     });
                                 });
+
+                                $('.tastes-content').show();
+                                $('.tastes .loader').removeClass('active');
                             }
                         }
                     );
@@ -124,7 +145,7 @@ $(document).ready(function() {
                             enableEdgeHovering: false,
                             edgeHoverColor: 'default',
                             defaultEdgeHoverColor: "#eee",
-                            defaultHoverLabelBGColor: '#eee',
+                            defaultHoverLabelBGColor: '#fff',
 
                             // Custom params
                             customLabel: true,
@@ -141,7 +162,7 @@ $(document).ready(function() {
                         }
                     });
 
-                    sigma.parsers.json('data/'+ username +'.json', s, function() {
+                    sigma.parsers.json('data/'+ username +'/artists-graph.json', s, function() {
                         s.startForceAtlas2({
                             linLogMode: true,
                             strongGravityMode: true,
@@ -167,5 +188,5 @@ $(document).ready(function() {
                 }
             }
         );
-    });
+    }
 });

@@ -18,10 +18,32 @@ require_once 'vendor/spotify/src/SpotifyWebAPIException.php';
 require_once 'vendor/spotify/src/SpotifyWebAPI.php';
 require_once 'vendor/spotify/src/Session.php';
 require_once 'vendor/spotify/src/Request.php';
+require_once 'vendor/autoload.php';
 
 class Controller {
 
+    private $twig;
+
     public function __construct() {
+        $loader = new Twig_Loader_Filesystem(__DIR__);
+        $this->twig = new Twig_Environment($loader, array(
+            'cache' => false,
+        ));
+    }
+
+    public function index() {
+        // Récupère toutes les données d'analyse existantes
+        $users_data = array('users' => array());
+        foreach(scandir('data') as $file) {
+            if($file != '.' && $file != '..') {
+                array_push($users_data['users'], array('username' => $file));
+            }
+        }
+
+        echo $this->twig->render('index.html.twig', $users_data);
+    }
+
+    public function saveUserPicture($user) {
 
     }
 
@@ -29,8 +51,9 @@ class Controller {
 
         ApplicationConfig::$lastFmUser = $user;
 
-        if(!file_exists('data/' . ApplicationConfig::$lastFmUser . '.json'))
+        if(!file_exists('data/' . $user . '/artists-graph.json'))
         {
+            mkdir('data/' . $user);
             EchoNest_Autoloader::register();
             $params = array('user' => ApplicationConfig::$lastFmUser, 'limit' => '50');
 
@@ -40,7 +63,7 @@ class Controller {
 
             // API Instances
             $lastFm = new lastfmApi();
-            $lastFmUser = $lastFm->getPackage($auth, 'user');
+
             $lastFmLibrary = $lastFm->getPackage($auth, 'library');
 
             $tracks = $lastFmLibrary->getArtists($params);
@@ -69,13 +92,13 @@ class Controller {
 
                 session_start();
                 $_SESSION['total'] = count($artistsGraph->getNodes());
-                $_SESSION['step'] = "Analyse des artistes...";
+                $_SESSION['step'] = "Analyse des artistes : ";
                 session_write_close();
 
                 foreach($artistsGraph->getNodes() as $node) {
                     // On stocke la progression actuelle
                     session_start();
-                    $_SESSION['progress'] = ceil($i / $_SESSION['total'] * 100);
+                    $_SESSION['progress'] = $i;
                     session_write_close();
 
                     try {
@@ -96,7 +119,7 @@ class Controller {
                 $_SESSION['progress'] = 0;
                 session_write_close();
 
-                $artistsGraph->saveToJSON('data/' . ApplicationConfig::$lastFmUser . '.json');
+                $artistsGraph->saveToJSON('data/' . $user . '/artists-graph.json');
             }
 
             else {
@@ -135,18 +158,18 @@ class Controller {
         $analyze_md5_data = array();
         $tracks_analysis_data = array();
 
-        if(!file_exists('data/' . ApplicationConfig::$lastFmUser . '-tracks-analysis.json')) {
+        if(!file_exists('data/' . $user . '/tracks-analysis.json')) {
 
             session_start();
             $_SESSION['total'] = count($userTracks);
-            $_SESSION['step'] = "Analyse des musiques...";
+            $_SESSION['step'] = "Analyse des musiques préférées : ";
             session_write_close();
             //Envoi des données pour analyse
-            $progress_i = 0;
+            $progress_i = 1;
             $i = 0;
             foreach($userTracks as $track) {
                 session_start();
-                $_SESSION['progress'] = ceil($progress_i / $_SESSION['total'] * 100);
+                $_SESSION['progress'] = $progress_i;
                 session_write_close();
 
                 $result = $songsApi->search(array('title' => $track['name'], 'artist' => $track['artist']['name'], 'results' => 1, 'bucket' => array('id:spotify', 'tracks')));
@@ -213,17 +236,17 @@ class Controller {
                 }
             }
 
-            saveJson($tracks_analysis_data, 'data/' . ApplicationConfig::$lastFmUser . '-tracks-analysis.json');
-            $this->getFavoritePitch();
+            saveJson($tracks_analysis_data, 'data/' . $user . '/tracks-analysis.json');
+            $this->getFavoritePitch($user);
         }
 
         else {
-            $this->getFavoritePitch();
+            $this->getFavoritePitch($user);
         }
     }
 
-    public function getFavoritePitch() {
-        $tracks_analysis_data = readJson('data/' . ApplicationConfig::$lastFmUser . '-tracks-analysis.json');
+    public function getFavoritePitch($user) {
+        $tracks_analysis_data = readJson('data/' . $user . '/tracks-analysis.json');
         if(!empty($tracks_analysis_data)) {
             // Calcul de la tonalité préférée
             $pitches = array();
@@ -254,6 +277,8 @@ class Controller {
 
             echo json_encode(array(
                 'favoritePitch' => $favePitch,
+                'key' => explode(' ', $favePitch)[0],
+                'mode' => explode(' ', $favePitch)[1],
                 'desc' => $favePitchDesc,
                 'array' => $pitches_count
             ), JSON_UNESCAPED_UNICODE);
@@ -264,7 +289,7 @@ class Controller {
         }
     }
 
-    public function getAcousticTastes() {
+    public function getAcousticTastes($user) {
         $acousticTastes = array(
           'danceability' => 0,
           'energy'       => 0,
@@ -273,7 +298,7 @@ class Controller {
           'valence'      => 0
         );
 
-        $data = readJson('data/' . ApplicationConfig::$lastFmUser . '-tracks-analysis.json');
+        $data = readJson('data/' . $user . '/tracks-analysis.json');
         $totalPlays = 0;
         foreach($data as $track) {
             if($track['analysis'] != null) {

@@ -11,6 +11,9 @@ require_once 'Controller.php';
 $controller = new Controller();
 
 switch($_GET['action']) {
+    case 'index':
+        $controller->index();
+        break;
     case 'buildGraph':
         $controller->buildGraph($_GET['user']);
         break;
@@ -18,9 +21,9 @@ switch($_GET['action']) {
         $controller->analyzeTracks($_GET['user']);
         break;
     case 'getFavoritePitch':
-        $controller->getFavoritePitch();
+        $controller->getFavoritePitch($_GET['user']);
         break;
     case 'getAcousticTastes':
-        $controller->getAcousticTastes();
+        $controller->getAcousticTastes($_GET['user']);
         break;
 }
