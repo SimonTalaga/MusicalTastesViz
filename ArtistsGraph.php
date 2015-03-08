@@ -56,7 +56,8 @@ class ArtistsGraph {
     public function saveToJSON($filename) {
         $data = array('nodes' => (array)$this->nodes, 'edges' => (array)$this->edges);
         $file = fopen($filename, 'w');
-        $json = stripslashes(json_encode($data, JSON_UNESCAPED_UNICODE));
+        //$json = stripslashes(json_encode($data, JSON_UNESCAPED_UNICODE));
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE);
         fwrite($file, mb_convert_encoding($json, 'UTF-8', 'auto'));
         fclose($file);
     }

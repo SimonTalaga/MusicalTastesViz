@@ -9,6 +9,9 @@ require_once 'vendor/echonest/Autoloader.php';
 require_once 'vendor/echonest/Autoloader.php';
 require_once 'vendor/lastfm/api/lastfmapi.php';
 require_once 'ApplicationConfig.php';
+require_once 'Node.php';
+require_once 'Edge.php';
+require_once 'ArtistsGraph.php';
 require_once 'functions.php';
 require_once 'MusicKeys.php';
 require_once 'vendor/spotify/src/SpotifyWebAPIException.php';
@@ -22,10 +25,9 @@ class Controller {
 
     }
 
-    public function buildGraph() {
-        if(isset($_POST['user'])) {
-            ApplicationConfig::$lastFmUser = $_POST['user'];
-        }
+    public function buildGraph($user) {
+
+        ApplicationConfig::$lastFmUser = $user;
 
         if(!file_exists('data/' . ApplicationConfig::$lastFmUser . '.json'))
         {
@@ -67,6 +69,7 @@ class Controller {
 
                 session_start();
                 $_SESSION['total'] = count($artistsGraph->getNodes());
+                $_SESSION['step'] = "Analyse des artistes...";
                 session_write_close();
 
                 foreach($artistsGraph->getNodes() as $node) {
@@ -102,7 +105,12 @@ class Controller {
         }
     }
 
-    public function analyzeTracks() {
+    public function analyzeTracks($user) {
+        ApplicationConfig::$lastFmUser = $user;
+        header('Content-Type: text/html; charset=utf-8');
+        session_start();
+        $_SESSION['progress'] = 0;
+        session_write_close();
         // ---------------- API Instances ---------------------
         // Spotify
         $spotifyApi = new SpotifyWebAPI\SpotifyWebAPI();
@@ -121,24 +129,36 @@ class Controller {
         $songsApi = $echonest->getSongApi();
         // -----------------------------------------------------
 
-        $userTracks = $lastFmLibrary->getTracks(array('user' => ApplicationConfig::$lastFmUser, 'limit' => 100));
+        $userTracks = $lastFmLibrary->getTracks(array('user' => ApplicationConfig::$lastFmUser, 'limit' => 50));
         $userTracks = $userTracks['results'];
 
         $analyze_md5_data = array();
         $tracks_analysis_data = array();
 
         if(!file_exists('data/' . ApplicationConfig::$lastFmUser . '-tracks-analysis.json')) {
-            // Envoi des données pour analyse
+
+            session_start();
+            $_SESSION['total'] = count($userTracks);
+            $_SESSION['step'] = "Analyse des musiques...";
+            session_write_close();
+            //Envoi des données pour analyse
+            $progress_i = 0;
             $i = 0;
             foreach($userTracks as $track) {
+                session_start();
+                $_SESSION['progress'] = ceil($progress_i / $_SESSION['total'] * 100);
+                session_write_close();
+
                 $result = $songsApi->search(array('title' => $track['name'], 'artist' => $track['artist']['name'], 'results' => 1, 'bucket' => array('id:spotify', 'tracks')));
 
                 if(isset($result[0]['tracks'][0]['foreign_id'])) {
                     $spotify_id = substr($result[0]['tracks'][0]['foreign_id'], 14);
                     $track_data = $spotifyApi->getTrack($spotify_id);
 
-                    array_push($tracks_analysis_data, array('name' => $track['name'], 'artist' => $track['artist']['name'], 'sample' => null, 'analysis' => null));
+                    array_push($tracks_analysis_data, array('name' => $track['name'], 'artist' => $track['artist']['name'], 'playcount' => $track['playcount'], 'sample' => null, 'analysis' => null));
                     echo 'Traitement de '. $track_data->name . '(' . $i .' / 100)<br />';
+                    echo '<b>'. $track_data->preview_url . '</b><br/>';
+                    echo 'jouée ' . $track['playcount'] . 'fois'.
                     ob_flush();
                     flush();
 
@@ -147,6 +167,7 @@ class Controller {
                         try {
                             $analysis = $tracksApi->upload($track_data->preview_url, true, 'mp3', 'audio_summary');
 
+                            // On vérifie que l'analyse s'est bien passée
                             if($analysis['track']['md5'] != null) {
                                 // S'il n'y a pas de données d'analyse musicale
                                 if($analysis['track']['audio_summary']['tempo'] == null) {
@@ -160,11 +181,12 @@ class Controller {
                             }
 
                             else {
-                                echo 'Ta mère';
+                                var_dump($analysis);
+                                throw new EchoNest_HttpClient_Exception("Problème avec l'analyseur.");
                             }
 
                         } catch (EchoNest_HttpClient_Exception $e) {
-                            echo "Erreur d'Echonest";
+                            echo $e->getMessage();
                         }
                     }
                     $i++;
@@ -172,6 +194,7 @@ class Controller {
                 else {
                     echo 'Not found ' . $track['name'] . 'on Spotify. <br />';
                 }
+                $progress_i++;
             }
 
             var_dump($tracks_analysis_data);
@@ -201,29 +224,72 @@ class Controller {
 
     public function getFavoritePitch() {
         $tracks_analysis_data = readJson('data/' . ApplicationConfig::$lastFmUser . '-tracks-analysis.json');
-        // Calcul de la tonalité préférée
-        $pitches = array();
+        if(!empty($tracks_analysis_data)) {
+            // Calcul de la tonalité préférée
+            $pitches = array();
 
-        foreach($tracks_analysis_data as $data) {
-            if($data['analysis'] != null)
-                array_push($pitches, MusicKeys::getPitch($data['analysis']['key'], $data['analysis']['mode']));
+            foreach($tracks_analysis_data as $data) {
+                if($data['analysis'] != null) {
+                    for($i = 0; $i < (int)$data['playcount']; $i++) {
+                        array_push($pitches, MusicKeys::getPitch($data['analysis']['key'], $data['analysis']['mode']));
+                    }
+                }
+            }
+
+            $empty_array = array_map( function($v) { return 0; }, $pitches);
+            $pitches_count = array_combine($pitches, $empty_array);
+
+            foreach($pitches as $pitch) {
+                $pitches_count[$pitch]++;
+            }
+
+            arsort($pitches_count);
+
+            if(array_values($pitches_count)[0] == array_values($pitches_count)[1] && array_keys($pitches_count)[0] == "Do♯ Majeur")
+                $favePitch = array_keys($pitches_count)[1];
+            else
+                $favePitch = array_keys($pitches_count)[0];
+
+            $favePitchDesc = MusicKeys::getPitchDesc($favePitch);
+
+            echo json_encode(array(
+                'favoritePitch' => $favePitch,
+                'desc' => $favePitchDesc,
+                'array' => $pitches_count
+            ), JSON_UNESCAPED_UNICODE);
         }
 
-        $empty_array = array_map( function($v) { return 0; }, $pitches);
-        $pitches_count = array_combine($pitches, $empty_array);
+        else {
+            echo 'Erreur, données vides';
+        }
+    }
 
-        foreach($pitches as $pitch) {
-            $pitches_count[$pitch]++;
+    public function getAcousticTastes() {
+        $acousticTastes = array(
+          'danceability' => 0,
+          'energy'       => 0,
+          'speechiness'  => 0,
+          'acousticness' => 0,
+          'valence'      => 0
+        );
+
+        $data = readJson('data/' . ApplicationConfig::$lastFmUser . '-tracks-analysis.json');
+        $totalPlays = 0;
+        foreach($data as $track) {
+            if($track['analysis'] != null) {
+                $acousticTastes['danceability'] += $track['analysis']['danceability'] * (int)$track['playcount'];
+                $acousticTastes['energy'] += $track['analysis']['energy'] * (int)$track['playcount'];
+                $acousticTastes['speechiness'] += $track['analysis']['speechiness'] * (int)$track['playcount'];
+                $acousticTastes['acousticness'] += $track['analysis']['acousticness'] * (int)$track['playcount'];
+                $acousticTastes['valence'] += $track['analysis']['valence'] * (int)$track['playcount'];
+                $totalPlays += (int)$track['playcount'];
+            }
         }
 
-        arsort($pitches_count);
-        $favePitch = array_keys($pitches_count)[0];
-        $favePitchDesc = MusicKeys::getPitchDesc($favePitch);
+        foreach($acousticTastes as $k => &$v) {
+            $v = (float)$v / $totalPlays;
+        }
 
-        echo json_encode(array(
-            'favoritePitch' => $favePitch,
-            'desc' => $favePitchDesc,
-            'array' => $pitches_count
-        ), JSON_UNESCAPED_UNICODE);
+        echo json_encode($acousticTastes);
     }
 } 

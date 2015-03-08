@@ -1,0 +1,12 @@
+{
+    "name": "Simon/music-tastes-viz",
+    "authors": [
+        {
+            "name": "SimonTalaga",
+            "email": "simon.talaga@gmail.com"
+        }
+    ],
+    "require": {
+        "twig/twig": "~1.0"
+    }
+}

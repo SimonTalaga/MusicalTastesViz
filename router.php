@@ -12,12 +12,15 @@ $controller = new Controller();
 
 switch($_GET['action']) {
     case 'buildGraph':
-        $controller->buildGraph();
+        $controller->buildGraph($_GET['user']);
         break;
     case 'analyzeTracks':
-        $controller->analyzeTracks();
+        $controller->analyzeTracks($_GET['user']);
         break;
     case 'getFavoritePitch':
         $controller->getFavoritePitch();
+        break;
+    case 'getAcousticTastes':
+        $controller->getAcousticTastes();
         break;
 }

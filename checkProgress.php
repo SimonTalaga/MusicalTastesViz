@@ -7,7 +7,7 @@
  */
 session_start();
 if(isset($_SESSION['progress'])) {
-    echo $_SESSION['progress'];
+    echo json_encode(array('step' => $_SESSION['step'], 'progress' => $_SESSION['progress']));
 }
 
 else {

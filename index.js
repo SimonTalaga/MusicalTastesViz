@@ -4,19 +4,6 @@
 var s = null;
 
 $(document).ready(function() {
-    $.ajax(
-        {
-            url: 'router.php',
-            data: {action: 'getFavoritePitch'},
-            success: function(data) {
-                data = JSON.parse(data);
-                $('#pitch blockquote').text(data.desc);
-                $('#pitch span').text(data.favoritePitch);
-            }
-            //dataType: 'json'
-        }
-    );
-
     $('#graphForm').submit(function(e) {
         e.preventDefault();
         var form = $(this);
@@ -27,7 +14,7 @@ $(document).ready(function() {
                 async: true,
                 url: form.attr("action"),
                 type: form.attr("method"),
-                data: {user: username},
+                data: {action: 'buildGraph', user: username},
                 progressChecker: null,
                 beforeSend: function()
                 {
@@ -38,7 +25,9 @@ $(document).ready(function() {
                                 "checkProgress.php",
                                 function(data)
                                 {
-                                    form.find('progress').attr('value', data);
+                                    data = JSON.parse(data);
+                                    form.find('span').text(data.step);
+                                    form.find('progress').attr('value', data.progress);
                                 }
                             );
                         },
@@ -49,6 +38,72 @@ $(document).ready(function() {
                 success: function(data)
                 {
                     clearInterval(this.progressChecker);
+
+                    $.ajax(
+                        {
+                            url: 'router.php',
+                            data: {action: 'analyzeTracks', user: username},
+                            progressChecker: null,
+                            beforeSend: function()
+                            {
+                                this.progressChecker = setInterval(
+                                    function()
+                                    {
+                                        $.post(
+                                            "checkProgress.php",
+                                            function(data)
+                                            {
+                                                data = JSON.parse(data);
+                                                form.find('span').text(data.step);
+                                                form.find('progress').attr('value', data.progress);
+                                            }
+                                        );
+                                    },
+                                    300
+                                );
+                            },
+                            success: function(data) {
+                                clearInterval(this.progressChecker);
+
+                                $.get('router.php', {action: 'getFavoritePitch'}, function(data) {
+                                    data = JSON.parse(data);
+                                    $('#pitch blockquote').text(data.desc);
+                                    $('#pitch span').text(data.favoritePitch);
+                                });
+
+                                $.get('router.php', {action: 'getAcousticTastes'}, function(data) {
+                                    data = JSON.parse(data);
+                                    var ctx = document.getElementById('diamond').getContext('2d');
+                                    var dataset = {
+                                        labels: ["Danceability", "Energy", "Speechiness", "Acousticness", "Valence"],
+                                        datasets: [{
+                                            label: "My First dataset",
+                                            fillColor: "rgba(220,220,220,0.2)",
+                                            strokeColor: "rgba(220,220,220,1)",
+                                            pointColor: "rgba(220,220,220,1)",
+                                            pointStrokeColor: "#fff",
+                                            pointHighlightFill: "#fff",
+                                            pointHighlightStroke: "rgba(220,220,220,1)",
+                                            data: [Math.ceil(parseFloat(data.danceability) * 100), Math.ceil(parseFloat(data.energy) * 100), Math.ceil(parseFloat(data.speechiness) * 100), Math.ceil(parseFloat(data.acousticness) * 100), Math.ceil(parseFloat(data.valence) * 100)]
+                                        }]
+                                    };
+//
+                                    var myRadarChart = new Chart(ctx).Radar(dataset, {
+                                        scaleOverride   : true,
+                                        scaleFontSize: 30,
+                                        pointLabelFontSize : 15,
+                                        scaleSteps      : 5,
+                                        scaleStepWidth  : 20,
+                                        scaleStartValue : 0,
+                                        pointDotRadius : 5
+
+                                    });
+                                });
+                            }
+                        }
+                    );
+
+
                     if(s instanceof sigma) {
                         s.kill();
                     }

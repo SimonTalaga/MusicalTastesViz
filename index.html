@@ -54,6 +54,8 @@
     <script src="vendor/sigmajs/plugins/sigma.layout.forceAtlas2/supervisor.js"></script>
     <script src="vendor/sigmajs/plugins/sigma.layout.forceAtlas2/worker.js"></script>
     <script src="vendor/jquery/jquery.min.js"></script>
+    <link rel="stylesheet" href="vendor/semantic-ui/dist/semantic.min.css"/>
+    <script src="vendor/semantic-ui/dist/semantic.min.js"></script>
 
     <style>
         #graph {
@@ -67,11 +69,37 @@
 </head>
 
 <body>
-    <form id="graphForm" action="buildGraph.php" method="POST">
-        <label for="username">Lastfm User :</label>
-        <input type="text" id="username" />
-        <button id="buildGraph">Générer le graphe</button>
-        <progress value="0" max="100">Pchitt</progress>
+    <form id="graphForm" action="router.php" method="GET">
+        <div class="ui center aligned segment">
+            <div class="ui action left icon input">
+                <i class="user icon"></i>
+                <input type="text" id="username" placeholder="Lastfm User">
+                <button type="submit" id="buildGraph" class="ui teal button">Analyse</button>
+            </div>
+            <div class="ui horizontal divider">Or browse existing data</div>
+            <div class="ui card">
+                <div class="content">
+                    <div class="header">
+                        <img src="images/wireframe/square-image.png" class="ui avatar image">
+                        Abbreviated Header
+                    </div>
+                    <div class="description">
+                        Short Description
+                    </div>
+                </div>
+                <div class="ui bottom attached button">
+                   View
+                </div>
+            </div>
+        </div>
+
+        <progress class="ui progress" value="0" max="100">Pchitt</progress>
+        <div data-total="20" data-value="6" class="ui teal file demo progress active" data-percent="80">
+            <div class="bar" style="-webkit-transition-duration: 300ms; transition-duration: 300ms; width: 80%;">
+                <div class="progress"></div>
+            </div>
+            <div class="label">Uploading 16 of 20</div>
+        </div>
     </form>
 
     <br/>
@@ -86,7 +114,11 @@
 
         </blockquote>
     </div>
+    <div>
+        <canvas id="diamond" width="500" height="500"></canvas>
+    </div>
 
+    <script src="vendor/chartjs/Chart.min.js"></script>
     <script src="index.js"></script>
 </body>
 </html>
